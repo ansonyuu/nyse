@@ -2,7 +2,7 @@ import yfinance as yf
 import pandas as pd
 
 # Columns for CSV are ["ACT Symbol", "Company Name"]
-csv = pd.read_csv('./nyse-test.csv')
+csv = pd.read_csv('./inputs/nyse-test.csv')
 tickers = ''
 
 # Outputs "AAPL MFST FBCK ETC"
@@ -31,5 +31,4 @@ for index, row in csv.iterrows():
     df = pd.concat([df, pd.DataFrame([new_row])])
 
 df.to_csv('nyse_all_new.csv', index=False)
-
 
