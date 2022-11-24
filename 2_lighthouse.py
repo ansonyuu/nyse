@@ -1,43 +1,46 @@
-
 import json
-import os
 import pandas as pd
 import random
-from datetime import datetime
-from subprocess import Popen
+import subprocess
 
-random_indices = random.sample(range(1, 5), 3)
+random_indices = random.sample(range(1, 854), 85)
 random_indices = sorted(random_indices)
 print(random_indices)
 
-df = pd.DataFrame([], columns=["SRS Index", 'URL','Accessibility Score'])
-
-df_urls = pd.read_csv("./inputs/urls_test.csv")["Website"]
+df_urls = pd.read_csv("./lower_market_caps.csv")["Website"]
 urls = df_urls.values.tolist()
 
+df = pd.DataFrame(columns=["SRS Index", "URL", "Accessibility Score"])
+
 for index in random_indices:    
+    new_row = {
+        "SRS Index": index,
+        "URL": urls[index],
+        "Accessibility Score": 'NONE'
+    }   
+
     bad_urls = ["nan", '']
-    if urls[index] in bad_urls or not urls[index]:
-        continue
-    filename = str(index) + ".json"
-    stream = os.popen(f'lighthouse {urls[index]} --only-categories=accessibility --quiet --output=json --output-path=./output/{index}.json --chrome-flags="--headless"')
-    print("Report complete for: " + urls[index])
+    print(urls[index])
 
-    
-# process is stuck on creating new .json file from output... unknown reason why
-# try capturing terminal input directly intead of writing to a file first
-    while(not os.path.exists(f'./output/{index}.json')):
-        continue
-
-    with open("./output/"+ str(index) + ".json") as json_data:
-        loaded_json = json.load(json_data)
-        score = str(round(loaded_json["categories"]["accessibility"]["score"] * 100))
-        print(score)
-        new_row = {
-            "SRS Index": random_indices[index],
-            "URL": urls[index],
-            "Accessibility Score": score
-        }
-        df = pd.concat([df, pd.DataFrame([new_row])])
+    try:
+        if str(urls[index]).strip() in bad_urls or not urls[index]:
+            print("Bad URL", urls[index])
+            raise Exception("Bad URL", urls[index])
+        filename = str(index) + ".json"
+        stream = subprocess.run(f'lighthouse {str(urls[index]).strip()} --skip-audits=full-page-screenshot --only-categories=accessibility --output=json --chrome-flags="--headless', stdout=subprocess.PIPE, shell=True)
+        
+        if not (output := stream.stdout.decode('utf-8')):
+            raise Exception("Stream is Empty")
+        if not (loaded_json := json.loads(output)):
+            raise Exception("No JSON Returned")
+        if not (score := loaded_json["categories"]["accessibility"]["score"]):
+            raise Exception ("No Score Returned")
+        
+        score = str(round(score * 100))
+        print("Report complete for: " + str(urls[index]), "score:", score)
+        new_row["Accessibility Score"] = score  
+    except:
+        print("ERROR: Score Not Found")
+    df = pd.concat([df, pd.DataFrame([new_row])])
 
 df.to_csv('./output/accessibility_scores.csv')
