@@ -2,26 +2,40 @@
 import json
 import os
 import pandas as pd
+import random
 from datetime import datetime
+from subprocess import Popen
 
-df = pd.DataFrame([], columns=['URL','Accessibility Score'])
+random_indices = random.sample(range(1, 5), 3)
+random_indices = sorted(random_indices)
+print(random_indices)
 
-# TODO: create list of websites for 280 websites
-# df_urls = pd.read_csv("all_data.csv")["Website"]
-# urls = df_urls.values.tolist()
+df = pd.DataFrame([], columns=["SRS Index", 'URL','Accessibility Score'])
 
-urls = ["https://airtable.com/shrwRSTAxBhy1JkRf"]
+df_urls = pd.read_csv("./inputs/urls_test.csv")["Website"]
+urls = df_urls.values.tolist()
 
-for url in urls:    
-    stream = os.popen(f'lighthouse {url} --only-categories=accessibility --quiet --output=json --output-path=./output/accessibility.json --chrome-flags="--headless"')
-    print("Report complete for: " + url)
+for index in random_indices:    
+    bad_urls = ["nan", '']
+    if urls[index] in bad_urls or not urls[index]:
+        continue
+    filename = str(index) + ".json"
+    stream = os.popen(f'lighthouse {urls[index]} --only-categories=accessibility --quiet --output=json --output-path=./output/{index}.json --chrome-flags="--headless"')
+    print("Report complete for: " + urls[index])
 
-    with open("./output/accessibility.json") as json_data:
+    
+# process is stuck on creating new .json file from output... unknown reason why
+# try capturing terminal input directly intead of writing to a file first
+    while(not os.path.exists(f'./output/{index}.json')):
+        continue
+
+    with open("./output/"+ str(index) + ".json") as json_data:
         loaded_json = json.load(json_data)
         score = str(round(loaded_json["categories"]["accessibility"]["score"] * 100))
         print(score)
         new_row = {
-            "URL": url,
+            "SRS Index": random_indices[index],
+            "URL": urls[index],
             "Accessibility Score": score
         }
         df = pd.concat([df, pd.DataFrame([new_row])])
